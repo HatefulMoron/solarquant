@@ -5,6 +5,29 @@ the user to easily source data from Ecogy AMS and SolarNetwork. This data
 can then be used to train machine learning predictors, which are ultimately
 used for predicting generation.
 
+### Using The SolarQuant Environment
+
+The recommended way of using the SolarQuant Environment is by using the
+docker image contained in this repository. You can either build it yourself,
+or pull it from dockerhub:
+
+```shell
+$ docker pull thomaspassmore/solarquant:latest
+$ docker run --rm -it --entrypoint bash thomaspassmore:solarquant
+# sqc -h
+Usage: sqc [options] [command]
+
+Options:
+  -h, --help        display help for command
+
+Commands:
+  config
+  projects
+  events
+  datums [options]
+  help [command]    display help for command
+```
+
 ### Authentication
 
 To fetch data for your predictor, you should first authenticate with Ecogy
