@@ -1,5 +1,7 @@
-#!/usr/bin/env NODE_OPTIONS=--no-warnings node
+#!/usr/bin/env -S NODE_OPTIONS=--no-warnings node
 import axios from 'axios';
+
+process.env.NODE_NO_WARNINGS = "1";
 
 import {Command} from "commander";
 import {listAMSProjects, listAMSSites, listAMSSources, listEvents} from "./ams.js"
