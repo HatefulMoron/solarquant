@@ -2,8 +2,7 @@
 
 This repository contains the SolarQuant environment tooling, which allows
 the user to easily source data from Ecogy AMS and SolarNetwork. This data
-can then be used to train machine learning predictors, which are ultimately
-used for predicting generation.
+can then be used to train machine learning predictors.
 
 ### Using The SolarQuant Environment
 
@@ -31,11 +30,11 @@ Commands:
 ### Authentication
 
 To fetch data for your predictor, you should first authenticate with Ecogy
-AMS and SolarNetwork. The Ecogy AMS provides metadata which is useful for
+AMS and/or SolarNetwork. The Ecogy AMS provides metadata which is useful for
 training purposes, and for examining the projects and data sources which
 can be fetched from SolarNetwork.
 
-You may have to authenticate regularly.
+The Ecogy AMS authentication process may need to be completed regularly.
 
 #### Ecogy AMS
 

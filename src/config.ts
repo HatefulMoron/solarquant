@@ -15,9 +15,16 @@ export interface SNConfig {
     secret?: string
 }
 
+export interface S3Config {
+    bucketPath?: string,
+    accessToken?: string,
+    accessSecret?: string
+}
+
 export interface ConfigFile {
     ams?: AMSConfig,
-    sn?: SNConfig
+    sn?: SNConfig,
+    s3?: S3Config
 }
 
 export function readConfigFile(): ConfigFile {
@@ -92,7 +99,27 @@ export async function authenticateSolarNetwork(): Promise<void> {
         cfg.sn.token = question("SolarNetwork Token: ")
     }
     if (!cfg.sn?.secret) {
-        cfg.sn.secret = question("SolarNetwork Secret: ")
+        cfg.sn.secret = question("SolarNetwork Secret: ", {hideEchoBack: true})
+    }
+
+    writeConfigFile(cfg)
+}
+
+export async function authenticateS3(): Promise<void> {
+    const cfg = readConfigFile()
+
+    if (!cfg.s3) {
+        cfg.s3 = {}
+    }
+
+    if (!cfg.s3?.bucketPath) {
+        cfg.s3.bucketPath = question("Bucket Path: ")
+    }
+    if (!cfg.s3?.accessToken) {
+        cfg.s3.accessToken = question("Access Token: ")
+    }
+    if (!cfg.s3?.accessSecret) {
+        cfg.s3.accessSecret = question("Access Secret: ",{hideEchoBack: true})
     }
 
     writeConfigFile(cfg)

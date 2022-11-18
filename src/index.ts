@@ -6,17 +6,18 @@ process.env.NODE_NO_WARNINGS = "1";
 import {Command} from "commander";
 import {listAMSProjects, listAMSSites, listAMSSources, listEvents} from "./ams.js"
 import {authenticateAMS, authenticateSolarNetwork} from "./config.js";
-import {fetchSNDatums} from "./solarnetwork.js";
+import { fetchSNDatums} from "./solarnetwork.js";
+import moment from "moment";
 
 const quant = new Command("sqc")
-const config = new Command("config")
-const projects = new Command("projects")
-const events = new Command("events")
-const datums = new Command("datums")
+const config = new Command("config").description("Manage authenticated sessions")
+const projects = new Command("projects").description("Fetch project metadata")
+const events = new Command("events").description("Fetch events")
+const datums = new Command("datums").description("Fetch datums from SolarNetwork")
 
 config
     .command("authenticate <type>")
-    .description("Authenticate against a portal of a given type. Supports 'ams' and 'solarnetwork'.")
+    .description("Authenticate against a portal of a given type. Supports 'ams' and 'sn'.")
     .action(async (type: string) => {
         try {
             if (type.toLowerCase() == "ams") {
@@ -76,15 +77,18 @@ events
 
 datums
     .option("-a, --aggregation <aggregation>", "Aggregation for datums")
+    .option("--parallel <parallel>", "Number of requests at once", "32")
     .option("-p, --partial", "Allow partial row matches")
     .option("-e, --empty", "Allow empty row matches")
     .command("stream <source> <format> <start> <end>")
+    .description("Dump datums specified by source")
     .action(async (source: string, format: string, start: string, end: string) => {
         try {
             const opts = datums.opts()
             await fetchSNDatums(source, format, start, end, opts)
-        } catch (e) {
+        } catch (e: any) {
             console.error(e)
+            console.log(e.config.url)
         }
     })
 

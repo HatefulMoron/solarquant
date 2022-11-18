@@ -1,6 +1,7 @@
 import {Amplify, Auth} from "aws-amplify";
 import {question} from "readline-sync";
 import {readConfigFile} from "./config.js";
+import { printTable, Table } from "console-table-printer";
 
 export interface AMSOptions {
     // AMS API URL
@@ -25,7 +26,7 @@ export interface AMSOptions {
     project?: string
 }
 
-export async function listAMSProjects(codes: boolean): Promise<void> {
+export async function getAMSProjects(): Promise<string> {
     const cfg = readConfigFile()
 
     if (!cfg.ams?.session) {
@@ -53,19 +54,64 @@ export async function listAMSProjects(codes: boolean): Promise<void> {
         "long"
     ]
 
-    response.json().then(resp => {
-        resp["projects"].forEach((p: any) => {
-            if (codes) {
-                console.log(p["code"])
-                return
-            }
+    const json = await response.json()
+    return json["projects"].map((p: any) => p["code"])
+}
 
-            let v: any = {}
-            for (const f of fields) {
-                v[f] = p[f]
-            }
-            console.table(v)
+export async function listAMSProjects(codes: boolean): Promise<void> {
+    const cfg = readConfigFile()
+
+    if (!cfg.ams?.session) {
+        throw new Error("Must have active AMS authentication")
+    }
+
+    const response = await fetch("https://api.ecogytest.io/projects", {
+        headers: {
+            Authorization: cfg.ams.session
+        }
+    })
+
+    if (response.status != 200) {
+        if (response.status == 401) {
+            console.error("The AMS API rejected your authenticated session. Please authenticate again.")
+            return
+        }
+
+        throw new Error(`Failed to fetch export data, code: ${response.status}, message: ${response.statusText}`)
+    }
+
+    const fields = [
+        "status",
+        "name",
+        "state",
+        "code",
+        "town",
+    ]
+
+    response.json().then(resp => {
+
+        const p = new Table({
+            columns: fields.map(f => {
+                return {
+                    name: f,
+                    alignment: 'left'
+                }
+            }),
+            rows: resp["projects"].map((p: any) => {
+                if (codes) {
+                    return
+                }
+
+                let v: any = {}
+                for (const f of fields) {
+                    v[f] = p[f]
+                }
+
+                return v
+            })
         })
+
+        p.printTable()
     })
 }
 
@@ -83,6 +129,11 @@ export async function listAMSSites(project: string): Promise<void> {
     })
 
     if (response.status != 200) {
+        if (response.status == 401) {
+            console.error("The AMS API rejected your authenticated session. Please authenticate again.")
+            return
+        }
+
         throw new Error(`Failed to fetch export data, code: ${response.status}, message: ${response.statusText}`)
     }
 
@@ -109,6 +160,11 @@ export async function listAMSSources(project: string, site: string): Promise<voi
     })
 
     if (response.status != 200) {
+        if (response.status == 401) {
+            console.error("The AMS API rejected your authenticated session. Please authenticate again.")
+            return
+        }
+
         throw new Error(`Failed to fetch export data, code: ${response.status}, message: ${response.statusText}`)
     }
 
@@ -139,6 +195,11 @@ export async function listEvents(start: string, end: string): Promise<void> {
     })
 
     if (response.status != 200) {
+        if (response.status == 401) {
+            console.error("The AMS API rejected your authenticated session. Please authenticate again.")
+            return
+        }
+
         throw new Error(`Failed to fetch export data, code: ${response.status}, message: ${response.statusText}`)
     }
 
