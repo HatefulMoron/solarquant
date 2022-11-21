@@ -1,8 +1,9 @@
 ## SolarQuant
 
 This repository contains the SolarQuant environment tooling, which allows
-the user to easily source data from Ecogy AMS and SolarNetwork. This data
-can then be used to train machine learning predictors.
+the user to easily source training data to be used for training machine
+learning predictors. SolarQuant works by consuming OrangeButton and
+SolarNetwork data, both of which are free and open source.
 
 ### Using The SolarQuant Environment
 
@@ -68,6 +69,28 @@ You will be asked to provide the following information:
 |--------|--------|----------------------|
 | token  | string | SolarNetwork token.  |
 | secret | string | SolarNetwork secret. |
+
+### Investigating Datums
+
+To determine which datums to fetch, we should first investigate what data is available
+to us. Firstly, we can list the projects which can be used:
+
+```shell
+$ sqc projects list
+```
+
+To determine which sources to use, we can take a project code from the list and ask for
+the relevant sources:
+
+```shell
+$ sqc projects source /MA1/**
+┌────────────────────────────────┬──────────────────┬───────────────┬──────────────┬────────┐
+│ source                         │ field            │ instantaneous │ accumulating │ status │
+├────────────────────────────────┼──────────────────┼───────────────┼──────────────┼────────┤
+│ /MA1/ANNE/R1/GEN/1             │ watts            │ Y             │              │        │
+│ /MA1/ANNE/R1/GEN/1             │ current          │ Y             │              │        │
+..
+```
 
 ### Fetching Training Datums
 
