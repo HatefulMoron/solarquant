@@ -1,13 +1,11 @@
 #!/usr/bin/env -S NODE_OPTIONS=--no-warnings node
-import axios from 'axios';
 
 process.env.NODE_NO_WARNINGS = "1";
 
 import {Command} from "commander";
 import {listAMSProjects, listAMSSites, listAMSSources, listEvents} from "./ams.js"
 import {authenticateAMS, authenticateSolarNetwork} from "./config.js";
-import { fetchSNDatums} from "./solarnetwork.js";
-import moment from "moment";
+import { fetchSNDatums, listSourceMeasurements} from "./solarnetwork.js";
 
 const quant = new Command("sqc")
 const config = new Command("config").description("Manage authenticated sessions")
@@ -59,6 +57,17 @@ projects
     .action(async (project: string, site: string) => {
         try {
             await listAMSSources(project, site)
+        } catch (e) {
+            console.error(e)
+        }
+    })
+
+projects
+    .command("source <path>")
+    .description("Show measurements given by source")
+    .action(async (source: string) => {
+        try {
+            await listSourceMeasurements(source)
         } catch (e) {
             console.error(e)
         }

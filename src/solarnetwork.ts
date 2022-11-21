@@ -1,12 +1,12 @@
 import {URL, URLSearchParams} from "url";
 import axios from "axios";
 import {AuthorizationV2Builder, DatumStreamMetadataRegistry} from "solarnetwork-api-core";
-import {readConfigFile, S3Config} from "./config.js";
-import {getAMSProjects} from "./ams.js"
+import {readConfigFile} from "./config.js";
 import cliProgress, {MultiBar} from "cli-progress"
-import {SimpleChannel, TryReceivedKind} from "channel-ts";
+import {SimpleChannel} from "channel-ts";
 import {getDateRanges} from "./util.js";
 import moment  from "moment";
+import {Table} from "console-table-printer";
 
 function encodeSolarNetworkUrl(url: any) {
     return url.toString().replace(/\+/g, "%20") // SolarNetwork doesn't support + for space character encoding
@@ -67,66 +67,6 @@ async function listSources(source: string, auth: any, secret: string, ids: any):
     return result.meta.map((m: any) => m['sourceId'])
 }
 
-async function exportDatums(cfg: S3Config, source: string, auth: any, secret: string, ids: any, start: string, end: string, aggregation?: string) {
-    const service = "net.solarnetwork.central.datum.export.standard.CsvDatumExportOutputFormatService"
-    const exportService = "net.solarnetwork.central.datum.export.dest.s3.S3DatumExportDestinationService"
-
-    let datumFilter = {
-        nodeIds: ids,
-        sourceIds: source,
-        startDate: start,
-        endDate: end,
-    }
-
-    let body = {
-        name: "test",
-        dataConfiguration: {
-            datumFilter: datumFilter,
-        },
-        outputConfiguration: {
-            compressionTypeKey: "n", // g = gzip, x = XZ, n = none
-            serviceIdentifier: service,
-            serviceProperties: {
-                includeHeader: true,
-            },
-        },
-        destinationConfiguration: {
-            serviceIdentifier: "net.solarnetwork.central.datum.export.dest.s3.S3DatumExportDestinationService",
-            serviceProperties: {
-                path: cfg.bucketPath,
-                filenameTemplate: "test" + "-{date}.{ext}",
-                accessKey: cfg.accessToken,
-                secretKey: cfg.accessSecret,
-            },
-        },
-    }
-
-    let bodyString = JSON.stringify(body)
-    let url = "https://data.solarnetwork.net/solaruser/api/v1/sec/user/export/adhoc"
-
-    let authHeader = auth.snDate(true).method("POST").contentType("application/json; charset=UTF-8").url(url).computeContentDigest(bodyString).build(secret)
-
-    return fetch(url, {
-        method: "POST",
-        headers: {
-            Authorization: authHeader,
-            "X-SN-Date": auth.requestDateHeaderValue,
-            "Content-Type": "application/json; charset=UTF-8",
-        },
-        body: bodyString,
-    }).then((response) => {
-        if (response.ok) {
-            console.log("request sent")
-            console.log(response)
-            return response.json()
-        } else {
-            console.error("failed")
-            console.error(response)
-            return Promise.reject(response.statusText)
-        }
-    })
-}
-
 function columnName(c: string): string {
     const meta = c.indexOf("$")
     return meta == -1 ? c : c.substring(0, meta)
@@ -167,22 +107,6 @@ function columnValue(aggregated: boolean, c: string, row: any, m: any): string {
     }
 }
 
-export async function fetchSNDatumsS3(): Promise<void> {
-    const cfg = readConfigFile()
-
-    if (!cfg.s3?.bucketPath) {
-        throw new Error("You must provide an S3 bucket")
-    }
-
-    if (!cfg.s3?.accessToken) {
-        throw new Error("You must provide an access token for the S3 bucket")
-    }
-
-    if (!cfg.s3?.accessSecret) {
-        throw new Error("You must provide an access secret for the S3 bucket")
-    }
-}
-
 function chunkArray<T>(arr: T[], n: number): T[][] {
     var chunkLength = Math.max(arr.length/n ,1);
     var chunks = [];
@@ -190,6 +114,93 @@ function chunkArray<T>(arr: T[], n: number): T[][] {
         if(chunkLength*(i+1)<=arr.length)chunks.push(arr.slice(chunkLength*i, chunkLength*(i+1)));
     }
     return chunks;
+}
+
+export async function listSourceMeasurements(path: string): Promise<void> {
+    const cfg = readConfigFile()
+
+    if (!cfg.sn) {
+        throw new Error("You must authenticate against SolarNetwork")
+    }
+
+    if (!cfg.sn.token) {
+        throw new Error("You must provide a token")
+    }
+
+    if (!cfg.sn.secret) {
+        throw new Error("You must provide a secret")
+    }
+
+    const auth = new AuthorizationV2Builder(cfg.sn.token)
+    const secret: string = cfg.sn.secret
+    const ids = await getNodeIds(auth, cfg.sn.secret)
+
+    const result = await getDatums(true, path, auth, secret, ids, undefined, undefined)
+
+    let rows = []
+    for (const source of result.meta) {
+        if (source['i']) {
+            for (const i of source['i']) {
+                rows.push({
+                    'source': source['sourceId'],
+                    'field': i,
+                    'instantaneous': 'Y',
+                    'accumulating': '',
+                    'status': '',
+                })
+            }
+        }
+        if (source['a']) {
+            for (const a of source['a']) {
+                rows.push({
+                    'source': source['sourceId'],
+                    'field': a,
+                    'instantaneous': '',
+                    'accumulating': 'Y',
+                    'status': '',
+                })
+            }
+        }
+        if (source['s']) {
+            for (const s of source['s']) {
+                rows.push({
+                    'source': source['sourceId'],
+                    'field': s,
+                    'instantaneous': '',
+                    'accumulating': '',
+                    'status': 'Y',
+                })
+            }
+        }
+    }
+
+    const p = new Table({
+        columns: [
+            {
+                name: 'source',
+                alignment: 'left',
+            },
+            {
+                name: 'field',
+                alignment: 'left',
+            },
+            {
+                name: 'instantaneous',
+                alignment: 'left',
+            },
+            {
+                name: 'accumulating',
+                alignment: 'left',
+            },
+            {
+                name: 'status',
+                alignment: 'left',
+            }
+        ],
+        rows: rows
+    })
+
+    p.printTable()
 }
 
 interface SNChunk {
@@ -304,7 +315,6 @@ async function fetchSNDatumsConsumer(chan: SimpleChannel<SNChunk>, bar: MultiBar
                             process.stdout.write(row[1].toString())
                         }
                     }
-                    //process.stdout.write(sep)
                     continue
                 }
 
@@ -321,8 +331,6 @@ async function fetchSNDatumsConsumer(chan: SimpleChannel<SNChunk>, bar: MultiBar
     }
 
 }
-
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export async function fetchSNDatums(source: string, format: string, start: string, end: string, opts: any): Promise<void> {
     const cfg = readConfigFile()
